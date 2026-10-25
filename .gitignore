@@ -1,0 +1,20 @@
+# 系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 依赖与构建缓存（本 Skill 实际不会产生）
+node_modules/
+dist/
+.cache/
+
+# 日志与临时文件
+*.log
+*.tmp
+*.temp

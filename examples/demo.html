@@ -1,0 +1,1477 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#02070a">
+  <title>机械蜂鸟 // Mechanical Hummingbird</title>
+  <style>
+    :root { color-scheme: dark; }
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background: #000;
+      font-family: "Courier New", ui-monospace, monospace;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* 页面环境光：让 9:16 舞台像一台悬浮在暗室里的显示器 */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 50% 42%, #0a1c1e 0%, #030607 52%, #000 100%),
+        radial-gradient(circle at 18% 82%, rgba(34, 120, 105, .10), transparent 44%);
+    }
+
+    .frame {
+      position: relative;
+      z-index: 1;
+      width: min(100vw, 56.25vh);
+      width: min(100vw, 56.25dvh);
+      display: grid;
+      place-items: center;
+    }
+
+    .screen {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 9 / 16;
+      max-height: 100vh;
+      max-height: 100dvh;
+      padding: 0;
+      overflow: hidden;
+      border: 1px solid rgba(130, 255, 222, .18);
+      border-radius: clamp(0px, 1.6vmin, 18px);
+      background: #02070a;
+      color: #dffff5;
+      cursor: pointer;
+      isolation: isolate;
+      appearance: none;
+      -webkit-appearance: none;
+      touch-action: manipulation;
+      box-shadow:
+        0 0 0 1px rgba(0, 0, 0, .8),
+        0 0 38px rgba(66, 238, 196, .10),
+        0 26px 90px rgba(0, 0, 0, .85);
+    }
+
+    .screen:focus-visible {
+      outline: 2px solid #9dffe2;
+      outline-offset: 4px;
+    }
+
+    #scene {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    .crt {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      border-radius: inherit;
+      pointer-events: none;
+    }
+
+    .crt span {
+      position: absolute;
+      pointer-events: none;
+    }
+
+    /* 扫描线：1px 暗线 + 2px 透明，形成经典的 3px 周期 */
+    .scanlines {
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, .26) 0,
+        rgba(0, 0, 0, .26) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      mix-blend-mode: multiply;
+      opacity: .58;
+    }
+
+    /* 荫罩：极低透明度的红绿蓝竖条，给画面一点模拟电视的脏 */
+    .mask {
+      inset: 0;
+      background: repeating-linear-gradient(
+        90deg,
+        rgba(255, 70, 100, .045) 0 1px,
+        rgba(80, 255, 190, .030) 1px 2px,
+        rgba(90, 140, 255, .045) 2px 3px
+      );
+      mix-blend-mode: screen;
+      opacity: .52;
+    }
+
+    .vignette {
+      inset: -2px;
+      background: radial-gradient(
+        ellipse at 50% 44%,
+        transparent 40%,
+        rgba(0, 0, 0, .26) 69%,
+        rgba(0, 0, 0, .80) 100%
+      );
+    }
+
+    .glare {
+      inset: 0;
+      background:
+        linear-gradient(
+          112deg,
+          rgba(255, 255, 255, .065) 0%,
+          rgba(255, 255, 255, .018) 18%,
+          transparent 30%,
+          transparent 72%,
+          rgba(255, 255, 255, .022) 100%
+        );
+    }
+
+    /* 极慢的扫描光带，只负责“活着”，不抢主体 */
+    .sweep {
+      left: 0;
+      width: 100%;
+      height: 14%;
+      background: linear-gradient(
+        to bottom,
+        transparent,
+        rgba(155, 255, 230, .055),
+        transparent
+      );
+      animation: sweep 9s linear infinite;
+    }
+
+    .flicker {
+      inset: 0;
+      background: rgba(180, 255, 238, .020);
+      animation: crt-flicker 6.4s steps(1, end) infinite;
+    }
+
+    .crt::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow:
+        inset 0 0 36px rgba(0, 0, 0, .78),
+        inset 0 0 2px rgba(210, 255, 245, .18);
+    }
+
+    .crt::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(
+        to bottom,
+        rgba(210, 255, 245, .028),
+        transparent 12%,
+        transparent 88%,
+        rgba(0, 0, 0, .12)
+      );
+    }
+
+    @keyframes sweep {
+      from { transform: translateY(760%); }
+      to   { transform: translateY(-120%); }
+    }
+
+    @keyframes crt-flicker {
+      0%, 95.8%, 100% { opacity: .28; }
+      96.2% { opacity: .82; }
+      96.7% { opacity: .12; }
+      97.1% { opacity: .66; }
+      97.4% { opacity: .34; }
+    }
+
+    .noscript {
+      position: fixed;
+      inset: 0;
+      z-index: 9;
+      display: grid;
+      place-items: center;
+      margin: 0;
+      background: #02070a;
+      color: #8dffd9;
+      font-size: 14px;
+      letter-spacing: .08em;
+    }
+
+    @media (max-width: 680px), (max-height: 760px) {
+      .screen {
+        border-radius: 0;
+        border-color: transparent;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sweep, .flicker { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="frame">
+    <button class="screen" id="screen" type="button"
+            aria-label="机械蜂鸟像素动画：黄铜蜂鸟在夜间植物舱中悬停吸蜜。点击或按空格重播。">
+      <canvas id="scene" width="360" height="640" aria-hidden="true"></canvas>
+      <span class="crt" aria-hidden="true">
+        <span class="sweep"></span>
+        <span class="scanlines"></span>
+        <span class="mask"></span>
+        <span class="flicker"></span>
+        <span class="vignette"></span>
+        <span class="glare"></span>
+      </span>
+    </button>
+  </main>
+  <noscript><p class="noscript">请启用 JavaScript 以观看动画。</p></noscript>
+
+  <script>
+  (() => {
+    'use strict';
+
+    // ---------------------------------------------------------------------
+    // 基础设置
+    // ---------------------------------------------------------------------
+    const canvas = document.getElementById('scene');
+    const screen = document.getElementById('screen');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const W = canvas.width;   // 逻辑画布 360 × 640，展示时放大到 9:16
+    const H = canvas.height;
+
+    ctx.imageSmoothingEnabled = false;
+
+    const TAU = Math.PI * 2;
+    const FX = 278;           // 机械花的中心
+    const FY = 408;
+    const TITLE_A = 'MECHANICAL';
+    const TITLE_B = 'HUMMINGBIRD';
+
+    const C = {
+      bg0: '#02070a',
+      ink: '#031014',
+      deep: '#061a1e',
+      mint: '#8dffd9',
+      mintMid: '#4fd0b1',
+      mintDark: '#1a6b63',
+      mintDeep: '#0d3a3a',
+      cyan: '#5be7e5',
+      brass: '#d59a4e',
+      brassHi: '#ffd48a',
+      brassDark: '#7c5129',
+      coral: '#ff6f7d',
+      coralDark: '#a83b58',
+      amber: '#ffbf6b',
+      violet: '#bb7fe0',
+      white: '#effff8'
+    };
+
+    // 5×7 点阵字。所有画面内文字都由此绘制，不依赖任何外部字体。
+    const FONT = {
+      A: ['01110', '10001', '10001', '11111', '10001', '10001', '10001'],
+      B: ['11110', '10001', '10001', '11110', '10001', '10001', '11110'],
+      C: ['01110', '10001', '10000', '10000', '10000', '10001', '01110'],
+      D: ['11110', '10001', '10001', '10001', '10001', '10001', '11110'],
+      E: ['11111', '10000', '10000', '11110', '10000', '10000', '11111'],
+      F: ['11111', '10000', '10000', '11110', '10000', '10000', '10000'],
+      G: ['01110', '10001', '10000', '10111', '10001', '10001', '01111'],
+      H: ['10001', '10001', '10001', '11111', '10001', '10001', '10001'],
+      I: ['11111', '00100', '00100', '00100', '00100', '00100', '11111'],
+      J: ['00111', '00010', '00010', '00010', '10010', '10010', '01100'],
+      K: ['10001', '10010', '10100', '11000', '10100', '10010', '10001'],
+      L: ['10000', '10000', '10000', '10000', '10000', '10000', '11111'],
+      M: ['10001', '11011', '10101', '10101', '10001', '10001', '10001'],
+      N: ['10001', '11001', '10101', '10011', '10001', '10001', '10001'],
+      O: ['01110', '10001', '10001', '10001', '10001', '10001', '01110'],
+      P: ['11110', '10001', '10001', '11110', '10000', '10000', '10000'],
+      Q: ['01110', '10001', '10001', '10001', '10101', '10010', '01101'],
+      R: ['11110', '10001', '10001', '11110', '10100', '10010', '10001'],
+      S: ['01111', '10000', '10000', '01110', '00001', '00001', '11110'],
+      T: ['11111', '00100', '00100', '00100', '00100', '00100', '00100'],
+      U: ['10001', '10001', '10001', '10001', '10001', '10001', '01110'],
+      V: ['10001', '10001', '10001', '10001', '10001', '01010', '00100'],
+      W: ['10001', '10001', '10001', '10101', '10101', '01010', '01010'],
+      X: ['10001', '10001', '01010', '00100', '01010', '10001', '10001'],
+      Y: ['10001', '10001', '01010', '00100', '00100', '00100', '00100'],
+      Z: ['11111', '00001', '00010', '00100', '01000', '10000', '11111'],
+      0: ['01110', '10001', '10011', '10101', '11001', '10001', '01110'],
+      1: ['00100', '01100', '00100', '00100', '00100', '00100', '01110'],
+      2: ['01110', '10001', '00001', '00010', '00100', '01000', '11111'],
+      3: ['11111', '00010', '00100', '00010', '00001', '10001', '01110'],
+      4: ['00010', '00110', '01010', '10010', '11111', '00010', '00010'],
+      5: ['11111', '10000', '11110', '00001', '00001', '10001', '01110'],
+      6: ['00110', '01000', '10000', '11110', '10001', '10001', '01110'],
+      7: ['11111', '00001', '00010', '00100', '01000', '01000', '01000'],
+      8: ['01110', '10001', '10001', '01110', '10001', '10001', '01110'],
+      9: ['01110', '10001', '10001', '01111', '00001', '00010', '01100'],
+      ' ': ['00000', '00000', '00000', '00000', '00000', '00000', '00000'],
+      '-': ['00000', '00000', '00000', '11111', '00000', '00000', '00000'],
+      '/': ['00001', '00010', '00010', '00100', '01000', '01000', '10000'],
+      '.': ['00000', '00000', '00000', '00000', '00000', '00110', '00110'],
+      ':': ['00000', '00110', '00110', '00000', '00110', '00110', '00000'],
+      '%': ['11001', '11010', '00010', '00100', '01000', '01011', '10011'],
+      '+': ['00000', '00100', '00100', '11111', '00100', '00100', '00000'],
+      '!': ['00100', '00100', '00100', '00100', '00100', '00000', '00100']
+    };
+
+    // 远景天线塔的固定剪影，避免每帧随机生成
+    const SKYLINE = [
+      [0, 446, 22, 20], [20, 456, 9, 10], [29, 451, 17, 15],
+      [48, 457, 26, 9], [78, 442, 5, 24], [85, 451, 20, 15],
+      [110, 447, 12, 19], [126, 457, 30, 9], [160, 452, 8, 14],
+      [171, 443, 23, 23], [198, 457, 17, 9], [220, 449, 9, 17],
+      [233, 455, 27, 11], [267, 441, 6, 25], [276, 451, 18, 15],
+      [300, 446, 15, 20], [318, 456, 20, 10], [341, 449, 19, 17]
+    ];
+
+    const PETAL_ANGLES = [-166, -110, -54, 2, 58, 114];
+    const PETAL_LENGTHS = [36, 43, 39, 41, 35, 38];
+    const PETAL_WIDTHS = [13, 15, 14, 15, 12, 13];
+    const PETAL_COLORS = [
+      ['#b94f66', '#e57d8c', '#ffcabf'],
+      ['#a66d36', '#d99b55', '#ffe0a8'],
+      ['#70508a', '#a878bf', '#e3b9ee'],
+      ['#b34a61', '#df7286', '#ffbfb4'],
+      ['#9b642f', '#ce8d4a', '#f7ce8f'],
+      ['#5f4476', '#8d68a5', '#c9a1da']
+    ];
+    const PETAL_ORDER = [4, 5, 3, 1, 0, 2];
+
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let reduced = motionQuery.matches;
+    const onMotionChange = (event) => { reduced = event.matches; };
+    if (typeof motionQuery.addEventListener === 'function') {
+      motionQuery.addEventListener('change', onMotionChange);
+    } else if (typeof motionQuery.addListener === 'function') {
+      motionQuery.addListener(onMotionChange);
+    }
+
+    // 渐变只创建一次，避免每帧分配
+    const skyGradient = ctx.createLinearGradient(0, 0, 0, H);
+    skyGradient.addColorStop(0, C.bg0);
+    skyGradient.addColorStop(.42, '#06141b');
+    skyGradient.addColorStop(.66, '#0a2328');
+    skyGradient.addColorStop(.71, '#0c2a2b');
+    skyGradient.addColorStop(1, '#030a0d');
+
+    const groundGradient = ctx.createLinearGradient(0, 466, 0, H);
+    groundGradient.addColorStop(0, '#0a2224');
+    groundGradient.addColorStop(.45, '#061619');
+    groundGradient.addColorStop(1, '#02090b');
+
+    const topFade = ctx.createLinearGradient(0, 0, 0, 152);
+    topFade.addColorStop(0, 'rgba(2, 7, 10, .90)');
+    topFade.addColorStop(.55, 'rgba(2, 7, 10, .42)');
+    topFade.addColorStop(1, 'rgba(2, 7, 10, 0)');
+
+    const bottomFade = ctx.createLinearGradient(0, 500, 0, H);
+    bottomFade.addColorStop(0, 'rgba(2, 8, 10, 0)');
+    bottomFade.addColorStop(.52, 'rgba(2, 8, 10, .68)');
+    bottomFade.addColorStop(1, 'rgba(2, 8, 10, .93)');
+
+    // ---------------------------------------------------------------------
+    // 工具函数
+    // ---------------------------------------------------------------------
+    const clamp = (value, min, max) => value < min ? min : (value > max ? max : value);
+
+    const smoothstep = (edge0, edge1, value) => {
+      const p = clamp((value - edge0) / (edge1 - edge0), 0, 1);
+      return p * p * (3 - 2 * p);
+    };
+
+    const easeOutCubic = (p) => 1 - Math.pow(1 - p, 3);
+
+    function rect(x, y, w, h, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(
+        Math.round(x),
+        Math.round(y),
+        Math.max(1, Math.round(w)),
+        Math.max(1, Math.round(h))
+      );
+    }
+
+    // 逐行填充椭圆，保证边缘是清晰的像素阶梯
+    function ellipse(cx, cy, rx, ry, color) {
+      if (rx < 1 || ry < 1) return;
+      ctx.fillStyle = color;
+      for (let dy = -Math.round(ry); dy <= Math.round(ry); dy++) {
+        const k = 1 - (dy * dy) / (ry * ry);
+        if (k < 0) continue;
+        const half = Math.floor(rx * Math.sqrt(k));
+        ctx.fillRect(Math.round(cx - half), Math.round(cy + dy), half * 2 + 1, 1);
+      }
+    }
+
+    // 扫描线多边形填充：比 Canvas 自带的 path 更硬，适合像素画
+    function polygon(points, color) {
+      let minY = Infinity;
+      let maxY = -Infinity;
+      for (let i = 0; i < points.length; i++) {
+        minY = Math.min(minY, points[i][1]);
+        maxY = Math.max(maxY, points[i][1]);
+      }
+      ctx.fillStyle = color;
+      const startY = Math.floor(minY);
+      const endY = Math.ceil(maxY);
+      for (let y = startY; y < endY; y++) {
+        const scanY = y + .5;
+        const crossings = [];
+        for (let i = 0; i < points.length; i++) {
+          const a = points[i];
+          const b = points[(i + 1) % points.length];
+          if ((a[1] <= scanY && b[1] > scanY) || (b[1] <= scanY && a[1] > scanY)) {
+            crossings.push(a[0] + (scanY - a[1]) / (b[1] - a[1]) * (b[0] - a[0]));
+          }
+        }
+        crossings.sort((a, b) => a - b);
+        for (let i = 0; i + 1 < crossings.length; i += 2) {
+          const x0 = Math.round(crossings[i]);
+          const x1 = Math.round(crossings[i + 1]);
+          if (x1 > x0) ctx.fillRect(x0, y, x1 - x0, 1);
+        }
+      }
+    }
+
+    function pixelLine(x0, y0, x1, y1, color, width = 1) {
+      let x = Math.round(x0);
+      let y = Math.round(y0);
+      const targetX = Math.round(x1);
+      const targetY = Math.round(y1);
+      const dx = Math.abs(targetX - x);
+      const dy = -Math.abs(targetY - y);
+      const sx = x < targetX ? 1 : -1;
+      const sy = y < targetY ? 1 : -1;
+      let error = dx + dy;
+      const half = width >> 1;
+
+      ctx.fillStyle = color;
+      for (let guard = 0; guard < 1200; guard++) {
+        ctx.fillRect(x - half, y - half, width, width);
+        if (x === targetX && y === targetY) break;
+        const e2 = error * 2;
+        if (e2 >= dy) { error += dy; x += sx; }
+        if (e2 <= dx) { error += dx; y += sy; }
+      }
+    }
+
+    function dottedCircle(cx, cy, radius, color, count, dash, gap, phase, size = 1) {
+      ctx.fillStyle = color;
+      const cycle = dash + gap;
+      for (let i = 0; i < count; i++) {
+        if (((i + Math.floor(phase)) % cycle + cycle) % cycle >= dash) continue;
+        const angle = TAU * i / count;
+        const x = Math.round(cx + Math.cos(angle) * radius);
+        const y = Math.round(cy + Math.sin(angle) * radius);
+        ctx.fillRect(x, y, size, size);
+      }
+    }
+
+    function textWidth(text, scale) {
+      if (!text.length) return 0;
+      return text.length * 6 * scale - scale;
+    }
+
+    function drawText(text, x, y, scale, color, align = 'left', alpha = 1) {
+      if (alpha <= 0) return 0;
+      const content = String(text).toUpperCase();
+      const width = textWidth(content, scale);
+      let startX = Math.round(x);
+      if (align === 'right') startX = Math.round(x - width);
+      if (align === 'center') startX = Math.round(x - width / 2);
+      const top = Math.round(y);
+
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = color;
+      for (let i = 0; i < content.length; i++) {
+        const glyph = FONT[content[i]];
+        if (!glyph) continue;
+        const gx = startX + i * 6 * scale;
+        for (let row = 0; row < 7; row++) {
+          const bits = glyph[row];
+          for (let col = 0; col < 5; col++) {
+            if (bits[col] === '1') {
+              ctx.fillRect(gx + col * scale, top + row * scale, scale, scale);
+            }
+          }
+        }
+      }
+      ctx.globalAlpha = 1;
+      return width;
+    }
+
+    // 从根部到尖端逐渐收窄的叶片，用于尾羽、花叶和头冠
+    function drawBlade(x0, y0, x1, y1, width, fill, edge, spine) {
+      const dx = x1 - x0;
+      const dy = y1 - y0;
+      const len = Math.hypot(dx, dy) || 1;
+      const ux = dx / len;
+      const uy = dy / len;
+      const px = -uy;
+      const py = ux;
+
+      const points = (w, extra) => [
+        [x0 + px * w, y0 + py * w],
+        [x0 + dx * .35 + px * w, y0 + dy * .35 + py * w],
+        [x1 + ux * extra, y1 + uy * extra],
+        [x1 - px * 1.5, y1 - py * 1.5],
+        [x0 + dx * .4 - px * w * .8, y0 + dy * .4 - py * w * .8],
+        [x0 - px * w * .4, y0 - py * w * .4]
+      ];
+
+      polygon(points(width + 1.5, 2), C.ink);
+      polygon(points(width, 0), fill);
+      pixelLine(x0, y0, x1, y1, spine, 1);
+      pixelLine(
+        x0 + px * width * .7, y0 + py * width * .7,
+        x1 + px * .6, y1 + py * .6,
+        edge, 1
+      );
+      rect(x1 - 1, y1 - 1, 2, 2, edge);
+    }
+
+    function drawMeter(x, y, width, height, value, color) {
+      rect(x, y, width, height, 'rgba(2, 12, 14, .72)');
+      rect(x, y, width, 1, 'rgba(125, 255, 218, .12)');
+      const fill = Math.round((width - 2) * clamp(value, 0, 1));
+      if (fill > 0) {
+        rect(x + 1, y + 1, fill, Math.max(1, height - 2), color);
+      }
+      for (let i = 0; i < width; i += 9) {
+        rect(x + i, y, 1, height, 'rgba(0, 0, 0, .20)');
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // 背景
+    // ---------------------------------------------------------------------
+    function drawSky(t) {
+      ctx.fillStyle = skyGradient;
+      ctx.fillRect(0, 0, W, H);
+
+      // 高空薄雾，用几条很淡的硬边横带，不用大面积模糊
+      for (let i = 0; i < 4; i++) {
+        const y = 138 + i * 34 + Math.sin(t * .16 + i * 1.4) * 5;
+        rect(0, y, W, 8, `rgba(60, 210, 184, ${.018 - i * .003})`);
+      }
+      rect(0, 398, W, 1, 'rgba(255, 190, 110, .05)');
+      rect(0, 421, W, 1, 'rgba(90, 235, 200, .045)');
+    }
+
+    function drawStars(t) {
+      for (let i = 0; i < 56; i++) {
+        const x = (i * 137 + i * i * 29 + 41) % W;
+        const y = (i * 73 + i * i * 11 + 19) % 424;
+        if (y < 16) continue;
+        const twinkle = .28 + .55 * (.5 + .5 * Math.sin(t * (.45 + (i % 7) * .13) + i * 1.7));
+        if (i % 13 === 0) {
+          const color = `rgba(196, 255, 238, ${.32 + twinkle * .45})`;
+          rect(x, y, 1, 1, color);
+          rect(x - 1, y, 1, 1, color);
+          rect(x + 1, y, 1, 1, color);
+          rect(x, y - 1, 1, 1, color);
+          rect(x, y + 1, 1, 1, color);
+        } else {
+          rect(x, y, i % 9 === 0 ? 2 : 1, 1, `rgba(172, 244, 226, ${.16 + twinkle * .5})`);
+        }
+      }
+
+      // 一条周期性的细流星，时间由固定公式驱动
+      const cycle = t % 13;
+      if (cycle > 1 && cycle < 1.8) {
+        const p = (cycle - 1) / .8;
+        const sx = 52 + p * 118;
+        const sy = 92 + p * 36;
+        for (let i = 0; i < 8; i++) {
+          rect(sx - i * 3, sy - i, 2, 1, `rgba(185, 255, 235, ${(1 - i / 8) * .42})`);
+        }
+      }
+    }
+
+    function drawSun(t) {
+      const cx = 262;
+      const cy = 226;
+      const radius = 92;
+
+      // 由内向外叠几层低透明度光晕，边缘保持硬像素
+      for (let i = 7; i >= 1; i--) {
+        ellipse(cx, cy, radius + i * 9, radius + i * 9, 'rgba(255, 154, 88, .012)');
+      }
+
+      // 条纹太阳本体
+      const bands = ['#e7a25f', '#d18753', '#ba6d4d'];
+      for (let dy = -radius; dy < radius; dy += 2) {
+        const half = Math.floor(Math.sqrt(radius * radius - dy * dy));
+        const band = Math.floor((dy + radius) / 18) % 3;
+        ctx.fillStyle = bands[band];
+        ctx.fillRect(cx - half, cy + dy, half * 2, 2);
+      }
+
+      // 横向切槽是复古落日的标志，也让太阳不抢主体
+      for (let i = 0; i < 3; i++) {
+        const y = cy + 12 + i * 26;
+        const half = Math.floor(Math.sqrt(Math.max(0, radius * radius - (y - cy) * (y - cy))));
+        rect(cx - half, y, half * 2, 3, 'rgba(5, 15, 19, .92)');
+      }
+
+      // 受光边缘
+      for (let i = 0; i < 7; i++) {
+        const yy = cy - 68 + i * 17;
+        const half = Math.floor(Math.sqrt(Math.max(0, radius * radius - (yy - cy) * (yy - cy))));
+        rect(cx - half, yy, 2, 1, 'rgba(255, 221, 157, .35)');
+      }
+
+      // 太阳外的轨道刻度和一圈缓慢旋转的虚线
+      dottedCircle(cx, cy, radius + 16, 'rgba(255, 208, 138, .22)', 88, 4, 5, t * 3);
+      for (let i = 0; i < 14; i++) {
+        const angle = i * TAU / 14 + .08;
+        const r0 = radius + 24;
+        const r1 = r0 + (i % 3 === 0 ? 6 : 3);
+        pixelLine(
+          cx + Math.cos(angle) * r0,
+          cy + Math.sin(angle) * r0,
+          cx + Math.cos(angle) * r1,
+          cy + Math.sin(angle) * r1,
+          'rgba(255, 200, 130, .16)',
+          1
+        );
+      }
+    }
+
+    function drawHorizon(t) {
+      // 地平线下方的暗色地面
+      ctx.fillStyle = groundGradient;
+      ctx.fillRect(0, 466, W, H - 466);
+
+      // 远处的一层暖色雾，让太阳落在地面上，而不是浮在空中
+      rect(0, 452, W, 10, 'rgba(255, 155, 90, .028)');
+      rect(0, 466, W, 1, 'rgba(255, 191, 112, .16)');
+
+      // 固定剪影：工厂、天线与远处植物舱的轮廓
+      for (let i = 0; i < SKYLINE.length; i++) {
+        const item = SKYLINE[i];
+        const [x, y, w] = item;
+        const height = 466 - y;
+        rect(x, y, w, height, '#041014');
+
+        if (i % 4 === 0) {
+          const mastX = Math.round(x + w / 2);
+          pixelLine(mastX, y, mastX, y - 8, '#041014', 1);
+          if (Math.sin(t * 2.4 + i * .8) > .1) {
+            rect(mastX, y - 9, 1, 1, 'rgba(255, 111, 125, .75)');
+          }
+        }
+
+        const spanW = Math.max(1, w - 4);
+        const spanH = Math.max(1, height - 6);
+        for (let k = 0; k < 2; k++) {
+          const wx = x + 2 + ((i * 3 + k * 5) % spanW);
+          const wy = y + 3 + ((i * 2 + k * 7) % spanH);
+          rect(wx, wy, 1, 1, i % 3 === 0
+            ? 'rgba(255, 191, 107, .33)'
+            : 'rgba(91, 231, 229, .24)');
+        }
+      }
+
+      // 两根更高的天线，给地平线加两个呼吸点
+      pixelLine(75, 466, 75, 414, '#041014', 2);
+      rect(74, 412, 3, 3, '#041014');
+      if (Math.sin(t * 1.8) > .1) rect(75, 411, 1, 1, 'rgba(255, 111, 125, .85)');
+
+      pixelLine(312, 466, 312, 425, '#041014', 2);
+      rect(311, 423, 3, 3, '#041014');
+      if (Math.sin(t * 2.1 + 1.8) > .1) rect(312, 422, 1, 1, 'rgba(255, 191, 107, .8)');
+
+      // 网格纵深：垂直线汇聚到消失点
+      ctx.strokeStyle = 'rgba(83, 235, 199, .055)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = -420; x <= 780; x += 60) {
+        ctx.moveTo(180, 466);
+        ctx.lineTo(x, H);
+      }
+      ctx.stroke();
+
+      // 横线按透视间距推进，产生“地面在向后流”的感觉
+      const phase = (t * .055) % 1;
+      for (let i = 0; i < 14; i++) {
+        const p = (i + phase) / 14;
+        const y = 466 + Math.pow(p, 2.2) * (H - 466);
+        rect(0, y, W, 1, `rgba(94, 255, 216, ${.028 + p * .10})`);
+      }
+
+      // 机械花脚下的平台与反光
+      ellipse(284, 542, 44, 13, 'rgba(74, 240, 194, .032)');
+      ellipse(284, 540, 22, 6, 'rgba(255, 180, 100, .042)');
+      rect(250, 549, 68, 2, 'rgba(5, 19, 20, .9)');
+      rect(250, 549, 68, 1, 'rgba(213, 154, 78, .16)');
+      rect(258, 551, 3, 1, 'rgba(255, 191, 107, .18)');
+      rect(305, 552, 2, 1, 'rgba(91, 231, 229, .18)');
+    }
+
+    function drawReticle(t) {
+      const cx = 166;
+      const cy = 282;
+
+      dottedCircle(cx, cy, 104, 'rgba(125, 255, 220, .19)', 72, 2, 4, t * 4);
+      dottedCircle(cx, cy, 116, 'rgba(125, 255, 220, .08)', 96, 1, 5, -t * 2.5);
+
+      for (let i = 0; i < 12; i++) {
+        const angle = i * TAU / 12 + .08;
+        const inner = 106;
+        const outer = i % 3 === 0 ? 116 : 111;
+        pixelLine(
+          cx + Math.cos(angle) * inner,
+          cy + Math.sin(angle) * inner,
+          cx + Math.cos(angle) * outer,
+          cy + Math.sin(angle) * outer,
+          'rgba(125, 255, 220, .18)',
+          1
+        );
+      }
+
+      // 四个角标，让主体区域像被仪器锁定
+      const corners = [
+        [72, 190, 1, 1], [258, 190, -1, 1],
+        [72, 374, 1, -1], [258, 374, -1, -1]
+      ];
+      for (let i = 0; i < corners.length; i++) {
+        const [x, y, sx, sy] = corners[i];
+        pixelLine(x, y, x + 10 * sx, y, 'rgba(125, 255, 220, .22)', 1);
+        pixelLine(x, y, x, y + 10 * sy, 'rgba(125, 255, 220, .22)', 1);
+      }
+
+      // 扫描点绕轨道运行
+      const sweepAngle = t * .55;
+      for (let i = 0; i < 3; i++) {
+        const a = sweepAngle - i * .035;
+        const x = Math.round(cx + Math.cos(a) * 104);
+        const y = Math.round(cy + Math.sin(a) * 104);
+        rect(x, y, 2, 2, `rgba(141, 255, 217, ${.8 - i * .24})`);
+      }
+
+      drawText('TRACK 07', 62, 172, 1, 'rgba(141, 255, 217, .38)');
+    }
+
+    // ---------------------------------------------------------------------
+    // 机械花：后层（茎、叶、花瓣）与前层（花心）
+    // ---------------------------------------------------------------------
+    function drawFlowerBack(t, intro) {
+      if (intro <= .001) return;
+
+      const bloom = (.62 + .38 * intro) * (1 + Math.sin(t * .95) * .035);
+      ctx.globalAlpha = intro;
+
+      // 花心外圈的暖色光晕
+      for (let i = 3; i >= 1; i--) {
+        ellipse(FX, FY, 42 + i * 7, 42 + i * 7, 'rgba(255, 154, 93, .012)');
+      }
+      dottedCircle(FX, FY, 57, 'rgba(255, 205, 130, .16)', 64, 2, 5, t * 2.2);
+
+      // 叶片先画，花茎压在上面
+      drawLeaf(t, FX + 1, 476, FX - 39, 454, 10);
+      drawLeaf(t, FX + 4, 510, FX + 45, 497, 9);
+
+      // 机械花茎：分段绘制，带黄铜箍
+      const stemPoints = [];
+      for (let i = 0; i <= 32; i++) {
+        const p = i / 32;
+        const x = FX + 6 + Math.sin(p * 3.8) * 6 + p * 5;
+        const y = FY + 14 + p * 128;
+        stemPoints.push([x, y]);
+      }
+      for (let i = 1; i < stemPoints.length; i++) {
+        pixelLine(
+          stemPoints[i - 1][0], stemPoints[i - 1][1],
+          stemPoints[i][0], stemPoints[i][1],
+          C.ink, 4
+        );
+      }
+      for (let i = 1; i < stemPoints.length; i++) {
+        pixelLine(
+          stemPoints[i - 1][0] - 1, stemPoints[i - 1][1],
+          stemPoints[i][0] - 1, stemPoints[i][1],
+          C.mintDeep, 1
+        );
+      }
+      for (let i = 5; i < stemPoints.length; i += 8) {
+        const [x, y] = stemPoints[i];
+        rect(x - 2, y, 5, 2, C.brassDark);
+        rect(x - 1, y, 3, 1, C.brass);
+      }
+
+      // 花瓣按固定顺序铺开，避免上层完全盖住下层
+      for (let n = 0; n < PETAL_ORDER.length; n++) {
+        drawPetal(PETAL_ORDER[n], t, bloom);
+      }
+
+      ctx.globalAlpha = 1;
+    }
+
+    function drawLeaf(t, x0, y0, x1, y1, width) {
+      const sway = Math.sin(t * 1.15 + x0 * .07) * 2;
+      const tipX = x1 + sway;
+      const tipY = y1 + Math.sin(t * .85 + y0 * .03) * 1;
+      drawBlade(x0, y0, tipX, tipY, width, '#123f38', '#5bd3ae', 'rgba(213, 154, 78, .55)');
+
+      // 分叉叶脉
+      const mx = (x0 + tipX) / 2;
+      const my = (y0 + tipY) / 2;
+      pixelLine(mx, my, mx + 5, my - 4, 'rgba(141, 255, 217, .28)', 1);
+      pixelLine(mx, my, mx + 4, my + 4, 'rgba(141, 255, 217, .18)', 1);
+    }
+
+    function drawPetal(index, t, bloom) {
+      const angle = PETAL_ANGLES[index] * Math.PI / 180
+        + Math.sin(t * .72 + index * 1.7) * .026;
+      const len = PETAL_LENGTHS[index] * bloom;
+      const width = PETAL_WIDTHS[index] * bloom;
+      const dx = Math.cos(angle);
+      const dy = Math.sin(angle);
+      const px = -dy;
+      const py = dx;
+      const colors = PETAL_COLORS[index];
+
+      const points = (l, w) => {
+        const mx = FX + dx * l * .55;
+        const my = FY + dy * l * .55;
+        const tx = FX + dx * l;
+        const ty = FY + dy * l;
+        return [
+          [FX + dx * 7, FY + dy * 7],
+          [mx + px * w, my + py * w],
+          [tx + px * 2, ty + py * 2],
+          [tx - px * 2, ty - py * 2],
+          [mx - px * w, my - py * w]
+        ];
+      };
+
+      polygon(points(len + 3, width + 2), C.ink);
+      polygon(points(len, width), colors[0]);
+      polygon(points(len * .72, width * .52), colors[1]);
+
+      // 花瓣中脊和端点
+      pixelLine(
+        FX + dx * 8, FY + dy * 8,
+        FX + dx * (len - 2), FY + dy * (len - 2),
+        'rgba(46, 18, 27, .72)', 1
+      );
+      const tipX = FX + dx * len;
+      const tipY = FY + dy * len;
+      rect(tipX - 1, tipY - 1, 2, 2, colors[2]);
+
+      // 机械铆钉，沿中脊两侧固定分布
+      const rx = FX + dx * len * .58;
+      const ry = FY + dy * len * .58;
+      rect(rx + px * 4, ry + py * 4, 1, 1, 'rgba(255, 212, 138, .55)');
+      rect(rx - px * 4, ry - py * 4, 1, 1, 'rgba(255, 212, 138, .35)');
+    }
+
+    function drawFlowerCore(t, intro) {
+      if (intro <= .001) return;
+
+      const pulse = .5 + .5 * Math.sin(t * 3.1);
+      ctx.globalAlpha = intro;
+
+      // 花心前景的齿轮环与发光核心
+      ellipse(FX, FY, 30, 30, 'rgba(255, 175, 103, .035)');
+      ellipse(FX, FY, 24, 24, 'rgba(5, 17, 18, .55)');
+
+      for (let i = 0; i < 12; i++) {
+        const a = i * TAU / 12 + t * .32;
+        const x = FX + Math.cos(a) * 20;
+        const y = FY + Math.sin(a) * 20;
+        rect(x - 1, y - 1, 3, 3, C.brass);
+      }
+
+      ellipse(FX, FY, 17, 17, C.ink);
+      ellipse(FX, FY, 15, 15, C.brassDark);
+      ellipse(FX, FY, 13, 13, C.brass);
+      ellipse(FX, FY, 10, 10, '#0a201e');
+      ellipse(FX, FY, 7 + pulse, 7 + pulse, `rgba(79, 255, 211, ${.18 + pulse * .12})`);
+      rect(FX - 3, FY - 3, 7, 7, C.mint);
+      rect(FX - 2, FY - 2, 5, 5, '#d6fff1');
+      rect(FX - 1, FY - 1, 3, 3, C.white);
+
+      // 环形的黄铜花蕊
+      for (let i = 0; i < 9; i++) {
+        const a = i * TAU / 9 + t * .12;
+        const r0 = 11;
+        const r1 = 23 + Math.sin(t * 1.8 + i) * 2;
+        const x0 = FX + Math.cos(a) * r0;
+        const y0 = FY + Math.sin(a) * r0;
+        const x1 = FX + Math.cos(a) * r1;
+        const y1 = FY + Math.sin(a) * r1;
+        pixelLine(x0, y0, x1, y1, 'rgba(213, 154, 78, .72)', 1);
+        rect(x1, y1, 1, 1, i % 2 === 0 ? C.amber : C.coral);
+      }
+
+      dottedCircle(FX, FY, 28, 'rgba(141, 255, 217, .22)', 56, 2, 5, -t * 3);
+
+      // 从花心上升的花蜜微粒
+      for (let i = 0; i < 6; i++) {
+        const p = ((t * .16 + i / 6) % 1);
+        const angle = -Math.PI / 2 + Math.sin(t * 1.25 + i * 1.4) * .55;
+        const distance = 10 + p * 34;
+        const x = FX + Math.cos(angle) * distance;
+        const y = FY + Math.sin(angle) * distance - 5;
+        rect(x, y, 1, 1, `rgba(255, 208, 138, ${(1 - p) * .65})`);
+      }
+
+      ctx.globalAlpha = 1;
+    }
+
+    // ---------------------------------------------------------------------
+    // 机械蜂鸟
+    // ---------------------------------------------------------------------
+    function drawBird(t, intro) {
+      if (intro <= .001) return;
+
+      // 悬停：两个不同频率的正弦叠加，避免机械式上下抖动
+      const bob = (Math.sin(t * 1.8) * 2 + Math.sin(t * .73 + 1.1) * 1.2) * (reduced ? .45 : 1);
+      const sway = (Math.sin(t * .55 + .4) * 1.8 + Math.sin(t * 1.3) * .6) * (reduced ? .45 : 1);
+      const bx = Math.round(148 + sway);
+      const by = Math.round(297 + bob);
+
+      ctx.globalAlpha = intro;
+
+      // 气流环与身体投影
+      ellipse(bx + 3, by + 45, 34, 6, 'rgba(1, 8, 10, .34)');
+      dottedCircle(bx + 2, by + 30, 25, 'rgba(141, 255, 217, .10)', 28, 2, 6, t * 2);
+      dottedCircle(bx + 2, by + 30, 31, 'rgba(141, 255, 217, .06)', 36, 1, 7, -t * 1.6);
+
+      drawTail(t, bx, by);
+
+      // 远侧翅膀：先画两个残影，再画主翅
+      for (let ghost = 2; ghost >= 1; ghost--) drawWing(t, bx, by, false, ghost);
+      drawWing(t, bx, by, false, 0);
+      for (let ghost = 2; ghost >= 1; ghost--) drawWing(t, bx, by, true, ghost);
+
+      drawBody(t, bx, by);
+      drawWing(t, bx, by, true, 0);
+      drawShoulder(bx, by);
+
+      // 翅膀尖端的空气火花，周期与振翅错开
+      const sparkle = Math.floor(t * 30) % 7;
+      if (sparkle < 3) {
+        rect(bx + 2, by - 81 - sparkle, 1, 1, 'rgba(198, 255, 240, .55)');
+        rect(bx + 5, by - 72 - sparkle, 1, 1, 'rgba(255, 191, 107, .34)');
+      }
+
+      ctx.globalAlpha = 1;
+    }
+
+    function drawTail(t, bx, by) {
+      const wag = Math.sin(t * 2.2) * 1.5;
+      const baseX = bx - 18;
+      const baseY = by + 6;
+
+      // 三根尾羽，颜色从深到浅形成层次
+      drawBlade(
+        baseX, baseY,
+        bx - 62, by + 18 + wag,
+        8, '#103b39', '#62d9b7', 'rgba(213, 154, 78, .38)'
+      );
+      drawBlade(
+        baseX, baseY + 3,
+        bx - 79, by + 34 + wag * .55,
+        9, '#0c2b2b', '#4ab596', 'rgba(213, 154, 78, .32)'
+      );
+      drawBlade(
+        baseX + 1, baseY + 7,
+        bx - 57, by + 49,
+        7, '#082224', '#338b78', 'rgba(213, 154, 78, .24)'
+      );
+
+      ellipse(baseX, baseY, 10, 9, C.ink);
+      ellipse(baseX, baseY, 8, 7, C.brassDark);
+      ellipse(baseX, baseY, 5, 4, C.brass);
+      rect(baseX - 1, baseY - 1, 2, 2, C.brassHi);
+    }
+
+    function drawWing(t, bx, by, near, ghost) {
+      const phase = t * 19 + (near ? .9 : 0) - ghost * .38;
+      const angle = -2.22 + Math.sin(phase) * .74 + (near ? .16 : -.08);
+      const length = near ? 94 : 84;
+      const width = near ? 14 : 12;
+      const rootX = bx + (near ? 20 : 15);
+      const rootY = by + (near ? -6 : -10);
+
+      const geometry = (l, w) => {
+        const dx = Math.cos(angle);
+        const dy = Math.sin(angle);
+        const px = -dy;
+        const py = dx;
+        return [
+          [rootX, rootY],
+          [rootX + dx * l * .28 + px * w, rootY + dy * l * .28 + py * w],
+          [rootX + dx * l * .70 + px * w * .65, rootY + dy * l * .70 + py * w * .65],
+          [rootX + dx * l, rootY + dy * l],
+          [rootX + dx * l * .82 - px * w * .25, rootY + dy * l * .82 - py * w * .25],
+          [rootX + dx * l * .38 - px * w * .7, rootY + dy * l * .38 - py * w * .7]
+        ];
+      };
+
+      if (ghost > 0) {
+        const ghostFill = near ? 'rgba(99, 255, 220, .075)' : 'rgba(79, 197, 178, .055)';
+        polygon(geometry(length * .94, width * .82), ghostFill);
+        return;
+      }
+
+      polygon(geometry(length + 2, width + 2), C.ink);
+      polygon(geometry(length, width), near
+        ? 'rgba(76, 218, 188, .84)'
+        : 'rgba(40, 132, 130, .76)');
+      polygon(geometry(length * .88, width * .55), 'rgba(179, 255, 230, .16)');
+
+      const tx = rootX + Math.cos(angle) * length;
+      const ty = rootY + Math.sin(angle) * length;
+      const px = -Math.sin(angle);
+      const py = Math.cos(angle);
+
+      // 前缘的金属翅脉
+      pixelLine(rootX, rootY, tx, ty, 'rgba(6, 20, 22, .92)', 2);
+      pixelLine(rootX - px * 1, rootY - py * 1, tx, ty, near ? C.brass : C.brassDark, 1);
+
+      // 三根斜向翅脉
+      for (let i = 0; i < 3; i++) {
+        const f = .38 + i * .21;
+        const vx = rootX + Math.cos(angle) * length * f + px * width * .52;
+        const vy = rootY + Math.sin(angle) * length * f + py * width * .52;
+        pixelLine(rootX + px * 2, rootY + py * 2, vx, vy, 'rgba(198, 255, 237, .24)', 1);
+      }
+
+      // 两道横向黄铜翼肋，让翅膀更像机械结构而不是普通昆虫翅
+      for (let i = 0; i < 2; i++) {
+        const f = .48 + i * .22;
+        const ribX = rootX + Math.cos(angle) * length * f;
+        const ribY = rootY + Math.sin(angle) * length * f;
+        const ribW = width * (1 - f * .48);
+        pixelLine(
+          ribX + px * ribW, ribY + py * ribW,
+          ribX - px * ribW * .55, ribY - py * ribW * .55,
+          'rgba(255, 212, 138, .22)', 1
+        );
+      }
+
+      rect(tx, ty, 2, 2, C.mint);
+      rect(tx + 1, ty - 2, 1, 1, 'rgba(255, 255, 255, .75)');
+    }
+
+    function drawGear(cx, cy, radius, angle) {
+      ellipse(cx, cy, radius + 3, radius + 3, C.ink);
+      for (let i = 0; i < 8; i++) {
+        const a = angle + i * TAU / 8;
+        rect(
+          cx + Math.cos(a) * (radius + 2) - 1,
+          cy + Math.sin(a) * (radius + 2) - 1,
+          2, 2, C.brass
+        );
+      }
+      ellipse(cx, cy, radius, radius, C.brassDark);
+      ellipse(cx, cy, radius - 2, radius - 2, '#302113');
+      for (let i = 0; i < 4; i++) {
+        const a = angle + i * TAU / 4;
+        pixelLine(
+          cx, cy,
+          cx + Math.cos(a) * (radius - 2),
+          cy + Math.sin(a) * (radius - 2),
+          C.brass, 1
+        );
+      }
+      ellipse(cx, cy, 2, 2, C.brassHi);
+    }
+
+    function drawPowerCore(cx, cy, t) {
+      const pulse = .5 + .5 * Math.sin(t * 3.4);
+      ellipse(cx, cy, 8, 8, C.ink);
+      ellipse(cx, cy, 6, 6, C.brassDark);
+      ellipse(cx, cy, 4 + pulse, 4 + pulse, `rgba(87, 255, 214, ${.45 + pulse * .25})`);
+      rect(cx - 1, cy - 1, 3, 3, C.mint);
+      rect(cx - 1, cy - 1, 1, 1, C.white);
+      rect(cx + 5, cy - 4, 1, 1, `rgba(141, 255, 217, ${.25 + pulse * .3})`);
+    }
+
+    function drawEye(t, hx, hy) {
+      const cycle = (t + 1.2) % 5.9;
+      const blink = !reduced && cycle > 5.74;
+
+      if (blink) {
+        rect(hx + 3, hy - 1, 8, 2, C.ink);
+        rect(hx + 4, hy - 1, 6, 1, C.brassDark);
+        return;
+      }
+
+      rect(hx + 3, hy - 4, 8, 8, C.ink);
+      rect(hx + 4, hy - 3, 6, 6, '#e2a65c');
+      rect(hx + 5, hy - 2, 4, 4, C.coral);
+      rect(hx + 6, hy - 1, 2, 2, C.white);
+      rect(hx + 5, hy - 2, 1, 1, C.brassHi);
+      rect(hx + 12, hy - 3, 1, 1, 'rgba(255, 111, 125, .38)');
+    }
+
+    function drawBeak(t, hx, hy) {
+      const startX = hx + 12;
+      const startY = hy + 3;
+      const endX = FX - 2;
+      const endY = FY - 7;
+      const bend = Math.sin(t * 1.4) * 1.2;
+      const midX = (startX + endX) * .5 - 2;
+      const midY = (startY + endY) * .5 + 9 + bend;
+
+      pixelLine(startX, startY, midX, midY, C.ink, 4);
+      pixelLine(midX, midY, endX, endY, C.ink, 3);
+      pixelLine(startX, startY - 1, midX, midY - 1, C.brassDark, 1);
+      pixelLine(midX, midY - 1, endX, endY, C.brassHi, 1);
+
+      // 喙根的金属箍
+      ellipse(startX + 1, startY + 1, 3, 3, C.ink);
+      ellipse(startX + 1, startY + 1, 2, 2, C.brass);
+      rect(startX + 4, startY + 1, 2, 1, 'rgba(255, 212, 138, .8)');
+    }
+
+    function drawCrest(t, hx, hy) {
+      const sway = Math.sin(t * 2.6) * 1.5;
+      drawBlade(
+        hx - 5, hy - 13,
+        hx - 16 + sway, hy - 35,
+        4, C.brassDark, C.brass, 'rgba(255, 212, 138, .55)'
+      );
+      drawBlade(
+        hx - 1, hy - 14,
+        hx + 7 + sway * .5, hy - 30,
+        3, C.brass, C.brassHi, 'rgba(255, 240, 195, .6)'
+      );
+      const blink = Math.sin(t * 3.8) > -.1;
+      if (blink) {
+        rect(hx - 17 + sway, hy - 37, 1, 1, 'rgba(141, 255, 217, .9)');
+        rect(hx + 8 + sway * .5, hy - 32, 1, 1, 'rgba(255, 191, 107, .8)');
+      }
+    }
+
+    function drawLegs(t, bx, by) {
+      const tick = Math.sin(t * 3.2) * 1;
+      pixelLine(bx + 1, by + 19, bx + 3, by + 27 + tick, C.ink, 2);
+      pixelLine(bx + 2, by + 20, bx + 4, by + 27 + tick, C.brassDark, 1);
+      pixelLine(bx + 3, by + 27 + tick, bx + 8, by + 28 + tick, C.brassDark, 1);
+      pixelLine(bx + 8, by + 28 + tick, bx + 8, by + 30 + tick, C.ink, 1);
+
+      pixelLine(bx + 11, by + 19, bx + 13, by + 26 - tick, C.ink, 2);
+      pixelLine(bx + 12, by + 20, bx + 14, by + 26 - tick, C.brassDark, 1);
+      pixelLine(bx + 13, by + 26 - tick, bx + 18, by + 26 - tick, C.brassDark, 1);
+      pixelLine(bx + 18, by + 26 - tick, bx + 18, by + 28 - tick, C.ink, 1);
+    }
+
+    function drawBody(t, bx, by) {
+      const hx = bx + 35;
+      const hy = by - 9;
+
+      drawLegs(t, bx, by);
+
+      // 尾根
+      ellipse(bx - 21, by + 8, 10, 10, C.ink);
+
+      // 身体：深色剪影 → 青绿腹甲 → 黄铜背甲
+      ellipse(bx - 3, by, 35, 24, C.ink);
+      ellipse(bx - 4, by - 1, 33, 22, '#103b39');
+      ellipse(bx - 1, by + 6, 27, 14, C.mintDark);
+      ellipse(bx - 3, by + 10, 23, 8, '#2b9b87');
+
+      // 腹部横向甲片
+      for (let i = -2; i <= 2; i++) {
+        rect(bx - 18 + i * 7, by + 13, 5, 1, 'rgba(5, 35, 31, .48)');
+      }
+
+      // 黄铜背甲三层硬边
+      ellipse(bx - 6, by - 7, 28, 11, C.brassDark);
+      ellipse(bx - 6, by - 9, 26, 8, C.brass);
+      ellipse(bx - 8, by - 11, 20, 4, C.brassHi);
+      pixelLine(bx - 30, by - 4, bx + 17, by - 12, 'rgba(54, 31, 15, .72)', 1);
+
+      // 背甲铆钉
+      const rivets = [
+        [bx - 25, by - 10], [bx - 16, by - 12], [bx - 6, by - 13],
+        [bx + 4, by - 12], [bx + 12, by - 10]
+      ];
+      for (let i = 0; i < rivets.length; i++) {
+        rect(rivets[i][0], rivets[i][1], 1, 1, 'rgba(255, 226, 168, .7)');
+      }
+
+      // 外露齿轮与能量核心
+      drawGear(bx - 20, by + 1, 9, t * .7);
+      drawPowerCore(bx + 7, by + 3, t);
+
+      // 颈部连接环
+      ellipse(hx - 9, hy + 12, 10, 7, C.ink);
+      ellipse(hx - 9, hy + 11, 8, 5, C.brassDark);
+      ellipse(hx - 9, hy + 10, 6, 3, C.brass);
+
+      // 头部
+      ellipse(hx, hy, 18, 17, C.ink);
+      ellipse(hx, hy, 15, 14, '#1b6c60');
+      ellipse(hx - 2, hy - 6, 14, 8, C.brassDark);
+      ellipse(hx - 2, hy - 7, 12, 6, C.brass);
+      ellipse(hx - 5, hy - 9, 8, 3, C.brassHi);
+      rect(hx - 10, hy - 12, 1, 1, 'rgba(255, 226, 168, .8)');
+      rect(hx + 2, hy - 11, 1, 1, 'rgba(255, 226, 168, .55)');
+
+      // 眼圈与眼睛
+      ellipse(hx + 7, hy - 1, 7, 7, 'rgba(7, 27, 26, .8)');
+      drawEye(t, hx, hy);
+
+      // 位于身体后上方的小信号灯
+      const blink = Math.sin(t * 2.7 + .8) > .25;
+      pixelLine(bx - 10, by - 15, bx - 15, by - 27, C.brassDark, 1);
+      if (blink) rect(bx - 16, by - 29, 2, 2, 'rgba(255, 111, 125, .9)');
+
+      // 机械头冠
+      drawCrest(t, hx, hy);
+
+      // 长喙：起点跟着头部移动，终点固定在花心
+      drawBeak(t, hx, hy);
+
+      // 边缘光：太阳从右上方照来
+      rect(hx + 7, hy - 15, 4, 1, 'rgba(255, 212, 138, .5)');
+      rect(hx + 11, hy - 12, 2, 1, 'rgba(255, 212, 138, .34)');
+      rect(bx + 8, by - 13, 5, 1, 'rgba(255, 212, 138, .32)');
+      rect(bx + 13, by + 11, 4, 1, 'rgba(141, 255, 217, .25)');
+    }
+
+    function drawShoulder(bx, by) {
+      const sx = bx + 19;
+      const sy = by - 7;
+      ellipse(sx, sy, 8, 7, C.ink);
+      ellipse(sx, sy, 6, 5, C.brassDark);
+      ellipse(sx, sy, 4, 3, C.brass);
+      rect(sx - 1, sy - 1, 2, 2, C.brassHi);
+      rect(sx + 4, sy + 1, 1, 1, 'rgba(141, 255, 217, .7)');
+    }
+
+    // ---------------------------------------------------------------------
+    // 粒子与 HUD
+    // ---------------------------------------------------------------------
+    function drawDust(t) {
+      // 空中的孢子：位置来自固定取模公式，不使用随机数
+      for (let i = 0; i < 24; i++) {
+        const span = 40 + (i % 5) * 10;
+        const x = 28 + ((i * 53 + i * i * 7) % 304)
+          + Math.sin(t * (.3 + (i % 4) * .08) + i * 1.1) * 9;
+        const baseY = 188 + ((i * 67 + i * i * 3) % 326);
+        const rise = (t * (4 + (i % 4)) + i * 13) % span;
+        const y = baseY - rise;
+        const fade = Math.sin(Math.PI * rise / span);
+        const alpha = .10 + fade * .42;
+        rect(x, y, i % 7 === 0 ? 2 : 1, 1, `rgba(133, 255, 215, ${alpha})`);
+      }
+
+      // 花心周围漂浮的暖色微粒
+      for (let i = 0; i < 8; i++) {
+        const angle = t * (.22 + i * .03) + i * 1.7;
+        const radius = 27 + (i % 3) * 7;
+        const x = FX + Math.cos(angle) * radius;
+        const y = FY + Math.sin(angle) * radius - 8;
+        const alpha = .24 + .30 * (.5 + .5 * Math.sin(t * 1.6 + i));
+        rect(x, y, 1, 1, `rgba(255, 191, 107, ${alpha})`);
+      }
+
+      // 近景缓慢上升的亮点，制造纵深
+      for (let i = 0; i < 11; i++) {
+        const x = 12 + ((i * 97 + 31) % 338);
+        const base = 500 + ((i * 41) % 120);
+        const y = base - ((t * (7 + i % 5) + i * 11) % 80);
+        rect(x, y, i % 4 === 0 ? 2 : 1, 1, `rgba(141, 255, 217, ${.10 + (i % 4) * .035})`);
+      }
+    }
+
+    function drawHud(t) {
+      // 顶部/底部压暗，保证文字可读，不改变主体的亮度层级
+      ctx.fillStyle = topFade;
+      ctx.fillRect(0, 0, W, 152);
+      ctx.fillStyle = bottomFade;
+      ctx.fillRect(0, 500, W, H - 500);
+
+      // 顶部状态
+      drawText('BIO-MECH ARCHIVE', 22, 20, 1, 'rgba(141, 255, 217, .74)');
+      if (Math.sin(t * 3.4) > 0) rect(299, 22, 3, 3, 'rgba(255, 111, 125, .92)');
+      drawText('REC', 338, 20, 1, 'rgba(255, 111, 125, .88)', 'right');
+
+      // 标题打字机：0.75 秒开始，逐字显示
+      const reveal = Math.floor(clamp((t - .75) * 28, 0, TITLE_A.length + TITLE_B.length));
+      const s1 = TITLE_A.slice(0, clamp(reveal, 0, TITLE_A.length));
+      const s2 = TITLE_B.slice(0, clamp(reveal - TITLE_A.length, 0, TITLE_B.length));
+      const glitch = !reduced
+        && Math.sin(t * 15.1) * Math.sin(t * 3.7 + 1) > .88;
+
+      if (glitch) {
+        drawText(s1, 21, 38, 3, 'rgba(91, 231, 229, .48)');
+        drawText(s2, 21, 64, 3, 'rgba(91, 231, 229, .40)');
+        drawText(s1, 24, 38, 3, 'rgba(255, 85, 112, .38)');
+        drawText(s2, 24, 64, 3, 'rgba(255, 85, 112, .30)');
+      }
+
+      drawText(s1, 22, 38 + (glitch ? 1 : 0), 3, C.white);
+      drawText(s2, 22, 64 - (glitch ? 1 : 0), 3, C.white);
+
+      // 打字光标：输入完成后变成慢速闪烁的方块
+      const cursorLine = reveal < TITLE_A.length ? s1 : s2;
+      const cursorY = reveal < TITLE_A.length ? 38 : 64;
+      const cursorX = 22 + textWidth(cursorLine, 3) + 5;
+      const cursorOn = reveal < TITLE_A.length + TITLE_B.length || Math.sin(t * 6) > .05;
+      if (cursorOn) {
+        rect(cursorX, cursorY, 7, 21, 'rgba(141, 255, 217, .84)');
+        rect(cursorX, cursorY, 7, 2, 'rgba(234, 255, 248, .9)');
+      }
+
+      drawText('SPECIMEN 07 / BRASS-WING', 22, 96, 1, 'rgba(141, 255, 217, .54)');
+      drawText('FLIGHT LOG', 338, 96, 1, 'rgba(255, 191, 107, .62)', 'right');
+      rect(22, 108, 316, 1, 'rgba(125, 255, 218, .18)');
+      rect(22, 108, 58, 1, 'rgba(125, 255, 218, .70)');
+
+      drawText('ENV / NIGHT GARDEN', 22, 150, 1, 'rgba(141, 255, 217, .30)');
+      drawText('SCAN 03', 22, 160, 1, 'rgba(141, 255, 217, .20)');
+
+      // 底部遥测
+      const wingHz = 52 + Math.round(Math.sin(t * .9));
+      const coreValue = 98.2 + Math.sin(t * .73 + .4) * .6;
+      const nectar = 86 + Math.round(Math.sin(t * .42) * 3);
+      const sync = 99 + (Math.sin(t * .31 + 2) > -.4 ? 1 : 0);
+
+      rect(22, 546, 316, 1, 'rgba(125, 255, 218, .16)');
+      rect(22, 546, 42, 1, 'rgba(255, 191, 107, .55)');
+
+      drawText('WING', 22, 556, 1, 'rgba(141, 255, 217, .54)');
+      drawText(String(wingHz) + ' HZ', 22, 568, 2, 'rgba(141, 255, 217, .95)');
+      drawText('CORE', 338, 556, 1, 'rgba(141, 255, 217, .54)', 'right');
+      drawText(coreValue.toFixed(1) + '%', 338, 568, 2, 'rgba(255, 191, 107, .95)', 'right');
+
+      drawMeter(22, 588, 128, 4, .72 + Math.sin(t * 1.1) * .03, 'rgba(89, 244, 201, .76)');
+      drawMeter(210, 588, 128, 4, .86 + Math.sin(t * .8 + 1) * .025, 'rgba(255, 191, 107, .72)');
+
+      drawText('NECTAR ' + nectar + '%', 22, 599, 1, 'rgba(141, 255, 217, .34)');
+      drawText('SYNC ' + sync + '%', 338, 599, 1, 'rgba(141, 255, 217, .30)', 'right');
+
+      const blink = Math.sin(t * 3.2) > 0;
+      drawText(
+        'CLICK / SPACE TO REPLAY',
+        180, 618, 1,
+        blink ? 'rgba(141, 255, 217, .66)' : 'rgba(141, 255, 217, .32)',
+        'center'
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // 场景装配与主循环
+    // ---------------------------------------------------------------------
+    function drawScene(t) {
+      drawSky(t);
+      drawStars(t);
+      drawSun(t);
+      drawHorizon(t);
+      drawReticle(t);
+
+      const flowerIntro = smoothstep(.55, 1.5, t);
+      const birdIntro = smoothstep(.45, 1.35, t);
+
+      drawFlowerBack(t, flowerIntro);
+      drawBird(t, birdIntro);
+      drawFlowerCore(t, flowerIntro);
+      drawDust(t);
+      drawHud(t);
+    }
+
+    function render(t) {
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = C.bg0;
+      ctx.fillRect(0, 0, W, H);
+
+      // CRT 开机：横向亮线展开成整屏
+      const boot = reduced ? 1 : easeOutCubic(clamp(t / .8, 0, 1));
+      if (boot < 1) {
+        const revealH = Math.max(2, Math.floor(H * boot));
+        const top = Math.floor((H - revealH) / 2);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, top, W, revealH);
+        ctx.clip();
+        drawScene(t);
+        ctx.restore();
+
+        // 展开边缘的亮线
+        ctx.fillStyle = 'rgba(198, 255, 240, .72)';
+        ctx.fillRect(0, top - 1, W, 1);
+        ctx.fillRect(0, top + revealH, W, 1);
+        ctx.fillStyle = 'rgba(255, 236, 196, .18)';
+        ctx.fillRect(0, top, W, 1);
+        ctx.fillRect(0, top + revealH - 1, W, 1);
+
+        // 开机白闪控制在极低强度
+        ctx.fillStyle = `rgba(214, 255, 245, ${(1 - boot) * .10})`;
+        ctx.fillRect(0, 0, W, H);
+      } else {
+        drawScene(t);
+      }
+
+      // 极淡的移动扫描带，只在画布内部产生一点模拟电视的呼吸
+      if (!reduced) {
+        const scanY = ((t * 22) % (H + 80)) - 40;
+        rect(0, scanY, W, 1, 'rgba(184, 255, 236, .035)');
+        rect(0, scanY + 1, W, 1, 'rgba(0, 0, 0, .06)');
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    let startTime = performance.now();
+    let rafId = 0;
+
+    function loop(now) {
+      const t = (now - startTime) / 1000;
+      // 降低动效偏好下放慢，但仍保持画面活着
+      render(reduced ? t * .7 : t);
+      rafId = requestAnimationFrame(loop);
+    }
+
+    function restart() {
+      startTime = performance.now();
+      if (rafId === 0) rafId = requestAnimationFrame(loop);
+    }
+
+    screen.addEventListener('click', restart);
+
+    window.addEventListener('keydown', (event) => {
+      if (event.code === 'Space') {
+        event.preventDefault();
+        restart();
+      }
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      // 回到前台时重新对齐时间，避免长时间后台后一次性跳过整个开机动画
+      if (!document.hidden) startTime = performance.now();
+    });
+
+    // 兜底：某些浏览器在页面恢复时不会立刻触发 rAF，重新启动一次不会重复叠加循环
+    window.addEventListener('pageshow', () => {
+      if (rafId === 0) rafId = requestAnimationFrame(loop);
+    });
+
+    rafId = requestAnimationFrame(loop);
+  })();
+  </script>
+</body>
+</html>
