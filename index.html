@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="0; url=./examples/demo.html">
+  <title>PIXEL CRT ANIM</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      display: grid;
+      place-items: center;
+      background: #02070a;
+      color: #8dffd9;
+      font-family: "Courier New", ui-monospace, monospace;
+      text-align: center;
+    }
+
+    main { max-width: 680px; }
+
+    h1 {
+      margin: 0 0 20px;
+      color: #effff8;
+      font-size: clamp(32px, 7vw, 64px);
+      letter-spacing: .08em;
+      text-shadow: 0 0 18px rgba(91, 231, 229, .28);
+    }
+
+    p {
+      margin: 0 0 28px;
+      color: #63bfa8;
+      font-size: clamp(14px, 2.5vw, 17px);
+      line-height: 1.8;
+    }
+
+    a {
+      display: inline-block;
+      padding: 12px 18px;
+      border: 1px solid rgba(141, 255, 217, .45);
+      background: rgba(4, 20, 22, .72);
+      color: #8dffd9;
+      font: inherit;
+      letter-spacing: .08em;
+      text-decoration: none;
+    }
+
+    a:hover,
+    a:focus-visible {
+      border-color: #8dffd9;
+      background: rgba(91, 231, 229, .10);
+      outline: none;
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      h1 { text-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>PIXEL CRT ANIM</h1>
+    <p>一个把一句话变成单文件像素风 CRT 动画的 Agent Skill</p>
+    <a href="./examples/demo.html">[▶ 查看示例动画]</a>
+  </main>
+</body>
+</html>

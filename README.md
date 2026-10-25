@@ -6,6 +6,13 @@ Pixel CRT Anim 是一个遵循 [Agent Skills](https://agentskills.io) 开放标�
 
 仓库内自带一个完整成品：[`examples/demo.html`](examples/demo.html)。主题是“机械蜂鸟”：黄铜蜂鸟在夜间植物舱里悬停，长喙探入机械花，背景有条纹落日、天线城市、像素网格与实时 HUD。
 
+## 在线预览
+
+- 项目首页（自动跳转到示例动画）：[https://lirongyu-lry.github.io/pixel-crt-anim/](https://lirongyu-lry.github.io/pixel-crt-anim/)
+- 示例动画直达：[https://lirongyu-lry.github.io/pixel-crt-anim/examples/demo.html](https://lirongyu-lry.github.io/pixel-crt-anim/examples/demo.html)
+
+> 首页使用 `<meta http-equiv="refresh">` 自动跳转；如果浏览器没有跳转，页面上的“[▶ 查看示例动画]”链接可以手动进入。
+
 ## 它能做什么
 
 输入一句主题，例如：
@@ -89,8 +96,10 @@ pixel-crt-anim/examples/demo.html
 pixel-crt-anim/
 ├── SKILL.md                 # Skill 入口：触发描述、五段工作规范、三个提示词模板
 ├── README.md                # 本文件：面向人的说明与安装方式
+├── index.html               # GitHub Pages 首页：自动跳转到示例动画
 ├── LICENSE                  # MIT 开源协议
 ├── .gitignore               # 忽略系统、编辑器与临时文件
+├── .gitattributes           # 统一使用 LF 换行
 ├── examples/
 │   └── demo.html            # 完整可运行示例：机械蜂鸟
 └── references/
